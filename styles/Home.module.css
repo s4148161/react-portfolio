@@ -1,0 +1,15 @@
+.item {
+  @apply p-4 border border-t-0 border-gray-700 cursor-pointer flex justify-between;
+}
+
+.item:first-child {
+  @apply border-t rounded-t;
+}
+
+.item:last-child {
+  @apply rounded-b;
+}
+
+.item.done {
+  @apply opacity-50 line-through;
+}
