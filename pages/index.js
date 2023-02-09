@@ -45,10 +45,6 @@ const Home = ({ session, posts, events, settingsProp }) => {
 
   const createItems = (posts, events) => {
     if (posts) {
-      /* let _items = []
-      posts.map(post => (
-        _items = [post.itemsData.values, ..._items]
-      )) */
       const _posts = posts.map(post => post.itemsData.values);
       const _items = _posts.concat(events)
       setItems(_items)
