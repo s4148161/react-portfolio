@@ -1,4 +1,4 @@
-import { format, isToday, isSameDay, intervalToDuration, parseISO, getMinutes, getYear, getMonth, getHours, getDate, set, isAfter } from 'date-fns';
+import { format, isToday, isSameDay, intervalToDuration, parseISO, getMinutes, getYear, getMonth, getHours, getDate, set, isAfter, isBefore } from 'date-fns';
 import cx from 'classnames'
 import styles from '../../styles/CalendarDay.module.css'
 import { useAppContext } from '../../context/items-context'
@@ -10,7 +10,8 @@ const CalendarDay = ({ date, hoursInDay }) => {
     
 
     const getTodaysEvents = () => {
-        var events = {}
+
+        let allDayEvents = []
 
         const filterEvents = (obj) => {
             if (isSameDay(parseISO(obj.date), date)) {
@@ -22,10 +23,11 @@ const CalendarDay = ({ date, hoursInDay }) => {
                                 
                             } else if (obj.hasOwnProperty('endTime')) {
                                 if (isSameDay(parseISO(obj.date), parseISO(obj.endTime))) {
-                                    console.log("ran")
                                     return true
                                 } else {
+                                    allDayEvents.push(obj)
                                     return false
+                                    
                                 }
                             } else {
                                 return false
@@ -43,6 +45,7 @@ const CalendarDay = ({ date, hoursInDay }) => {
                         if (isSameDay(parseISO(obj.date), parseISO(obj.endTime))) {
                             return true
                         } else {
+                            allDayEvents.push(obj)
                             return false
                         }
                     } else {
@@ -54,18 +57,29 @@ const CalendarDay = ({ date, hoursInDay }) => {
             }
         }
 
+        //let allDayEvents = items.filter(obj => isSameDay(parseISO(obj.date), date) && (obj.hasOwnProperty("endTime") && !isSameDay(parseISO(obj.date), parseISO(obj.endTime))))
+
         // events = items.filter(obj => obj.hasOwnProperty('duration') && (isSameDay(parseISO(obj.date), date) || obj.hasOwnProperty("recurringDays") && (obj.recurringDays.includes(format(date, "EEEE")) && isAfter(date, parseISO(obj.date)))))
-        events = items.filter(obj => filterEvents(obj))
+        let partialDayEvents = items.filter(obj => filterEvents(obj))
+
+        let events = {
+            allDay: allDayEvents,
+            todaysEvents: partialDayEvents
+        }
         
         return events
     }
 
-    const [todaysEvents, setTodaysEvents] = useState(getTodaysEvents())
+    const [todaysEvents, setTodaysEvents] = useState(getTodaysEvents().todaysEvents)
+
+    const [allDayEvents, setAllDayEvents] = useState(getTodaysEvents().allDay)
 
     
 
     useEffect(() => {
-        setTodaysEvents(getTodaysEvents())
+        setTodaysEvents(getTodaysEvents().todaysEvents)
+        setAllDayEvents(getTodaysEvents().allDay)
+        console.log(allDayEvents)
     }, [items, date]);
 
     /* const setHeight = (elmId) => {
@@ -92,18 +106,29 @@ const CalendarDay = ({ date, hoursInDay }) => {
         return newId
     }
 
-    const setSize = (elmId) => {
+    const setSize = (elmId, type) => {
         const elem = document.getElementById(createId(elmId));
-        const event = todaysEvents.find(x => x.id === elmId)
+        let event = ""
+
+        if (type === "partial") {
+            event = todaysEvents.find(x => x.id === elmId)
+        } else {
+            event = allDayEvents.find(x => x.id === elmId)
+        }
+        
         
 
         
 
-        const newDate = set(date, { year:getYear(date), month:getMonth(date), day:getDate(date), hours:getHours(parseISO(event.date)), minutes:getMinutes(parseISO(event.date))})
+        var newDate = set(date, { year:getYear(date), month:getMonth(date), day:getDate(date), hours:getHours(parseISO(event.date)), minutes:getMinutes(parseISO(event.date))})
 
         const startHours = settings.calendarStart.slice(0,2)
         const startMinutes = settings.calendarStart.slice(-2)
         const startTime = new Date(date.setHours(parseInt(startHours),parseInt(startMinutes),0,0))
+
+        if (isBefore(newDate, startTime)) {
+            newDate = startTime
+        }
             
         const offset = intervalToDuration({
             start: startTime,
@@ -112,7 +137,11 @@ const CalendarDay = ({ date, hoursInDay }) => {
 
         const offsetHours = offset.hours + (offset.minutes/60)
 
-        const offsetPercent = offsetHours/hoursInDay*100
+        let offsetPercent = offsetHours/hoursInDay*100
+        if (type === 'allDay') {
+            let elementPos = allDayEvents.map(function(x) {return x.id; }).indexOf(elmId);
+            offsetPercent = (100/allDayEvents.length) * elementPos
+        }
 
         if (event.duration === undefined) {
 
@@ -123,14 +152,20 @@ const CalendarDay = ({ date, hoursInDay }) => {
             })
 
             const endTimeDurationHours = endTimeDuration.hours + (endTimeDuration.minutes/60)
-            const heightPercent = endTimeDurationHours/hoursInDay*100
+            let heightPercent = endTimeDurationHours/hoursInDay*100
+            if (type === 'allDay') {
+                heightPercent = 100/allDayEvents.length
+            }
 
             if(typeof elem !== 'undefined' && elem !== null) {
                 elem.style.height = heightPercent + "%";
             }
         } else {
             const duration = event.duration
-            const heightPercent = duration/hoursInDay*100
+            let heightPercent = duration/hoursInDay*100
+            if (type === 'allDay') {
+                heightPercent = 100/allDayEvents.length
+            }
 
             if(typeof elem !== 'undefined' && elem !== null) {
                 elem.style.height = heightPercent + "%";
@@ -181,9 +216,15 @@ const CalendarDay = ({ date, hoursInDay }) => {
 
     useEffect(() => {
         todaysEvents.map(({id}) => {
-            setSize(id);
+            setSize(id, "partial");
         })
     }, [todaysEvents]);
+
+    useEffect(() => {
+        allDayEvents.map(({id}) => {
+            setSize(id, "allDay");
+        })
+    }, [allDayEvents]);
 
     const toggleSelected = (elmId) => {
         const _items = items.map((item) => {
@@ -205,6 +246,23 @@ const CalendarDay = ({ date, hoursInDay }) => {
                 <h2>{format((date), 'EEE')}</h2>
             </div>
             <div className='relative z-0'>
+                {
+                    allDayEvents.map(({id, title, date}) => (
+                        <div key={id} id={createId(id)} className="absolute inset-0 z-10 border-l-4 border-green-400 opacity-100 shadow-md w-auto rounded-md bg-green-200 top-[3000px] h-[51px] cursor-pointer pointer-events-auto" onClick={() => toggleSelected(id)}>
+                            <p className='text-sm mt-2 mx-3'>{format(parseISO(date), 'p')}</p>
+                            <p className='text-sm font-bold mx-3 truncate'>{title}</p>
+                        </div>
+                    ))
+                }
+                <div className="box-border h-[42px] pr-[24px] relative border-b border-gray-300 block">
+                    <p className="py-2"></p>
+                </div>
+                <div className="box-border h-[42px] pr-[24px] relative border-b-2 border-gray-400 block">
+                    <p className="py-2"></p>
+                </div>
+            </div>
+            <div className='relative z-0'>
+                
                 {
                     todaysEvents.map(({id, title, date}) => (
                         <div key={id} id={createId(id)} className="absolute inset-0 z-10 border-l-4 border-green-400 opacity-100 shadow-md w-auto rounded-md bg-green-200 top-[3000px] h-[51px] cursor-pointer pointer-events-auto" onClick={() => toggleSelected(id)}>

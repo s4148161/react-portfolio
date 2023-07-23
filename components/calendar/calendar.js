@@ -95,8 +95,13 @@ const Calendar = () => {
             </div>
             <div className="grid grid-cols-[10%_repeat(7,_minmax(0,_1fr))_1%]  mt-8 mb-16">
                 <div className="flex flex-col h-full">
+                    
                     <div>
-                        <div className="mt-[21px]"></div>
+                        
+                        <div className="mt-[40px]"></div>
+                        <div className="box-border h-[42px] pr-[24px] mb-[21px] relative block">
+                            <p className="py-2">All Day</p> 
+                        </div>
                         {
                             [...Array(Math.ceil((hoursInDay/(settings.calendarIncrements/60))+1))].map((e, i) => (
                                 drawHour(i)
